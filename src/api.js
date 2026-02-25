@@ -86,3 +86,21 @@ export const fetchArticleById = async (articleId) => {
     const data = await response.json();
     return data.comment; // { comment_id, votes, ... }
   };
+
+  export const deleteCommentById = async (commentId) => {
+    const response = await fetch(`${BASE_URL}/comments/${commentId}`, {
+      method: "DELETE",
+    });
+  
+    if (!response.ok) {
+      let msg = "Failed to delete comment";
+      try {
+        const err = await response.json();
+        msg = err.msg || msg;
+      } catch {}
+      throw new Error(msg);
+    }
+  
+    // 204 no content
+    return true;
+  };

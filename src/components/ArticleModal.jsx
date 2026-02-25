@@ -20,19 +20,18 @@ import ThumbUpAltOutlinedIcon from "@mui/icons-material/ThumbUpAltOutlined";
 import CommentCard from "./CommentCard";
 
 import {
-  fetchArticleById,
-  fetchCommentsByArticleId,
-  postComment,
-  patchCommentVotes,
-} from "../api";
+    fetchArticleById,
+    fetchCommentsByArticleId,
+    postComment,
+    patchCommentVotes,
+    deleteCommentById,
+  } from "../api";
 
 export default function ArticleModal({
   open,
   articleId,
   onClose,
   loggedInUser = "butter_bridge",
-
-  // лайк статьи (как у тебя уже работает)
   votes,
   liked,
   onToggleLike,
@@ -50,10 +49,6 @@ export default function ArticleModal({
 
   const commentsRef = useRef(null);
 
-  // -----------------------------
-  // ✅ реакции на комментарии: like | dislike | null
-  // хранение: { [commentId]: "like" | "dislike" }
-  // -----------------------------
   const [commentReactions, setCommentReactions] = useState(() => {
     try {
       const raw = localStorage.getItem("commentReactions");
@@ -64,16 +59,18 @@ export default function ArticleModal({
   });
 
   const [reactingCommentIds, setReactingCommentIds] = useState(() => new Set());
+  const [deletingCommentIds, setDeletingCommentIds] = useState(() => new Set());
 
   useEffect(() => {
-    localStorage.setItem("commentReactions", JSON.stringify(commentReactions));
+    try {
+      localStorage.setItem("commentReactions", JSON.stringify(commentReactions));
+    } catch {
+      // ignore
+    }
   }, [commentReactions]);
 
   const getReaction = (commentId) => commentReactions[commentId] ?? null;
 
-  // -----------------------------
-  // загрузка статьи + комментариев
-  // -----------------------------
   useEffect(() => {
     if (!open || !articleId) return;
 
@@ -114,18 +111,12 @@ export default function ArticleModal({
     };
   }, [open, articleId]);
 
-  // дата
   const dateLabel = useMemo(() => {
     if (!article?.created_at) return "";
     return new Date(article.created_at).toLocaleDateString("en-GB");
   }, [article]);
 
-  // лайки статьи: показываем из пропсов (синхронно с листом)
   const votesLabel = typeof votes === "number" ? votes : article?.votes;
-
-  // -----------------------------
-  // ✅ добавить комментарий
-  // -----------------------------
   const handleSubmitComment = async (e) => {
     e.preventDefault();
     const body = commentBody.trim();
@@ -133,18 +124,21 @@ export default function ArticleModal({
 
     try {
       setPosting(true);
+      setError("");
+
       const newComment = await postComment(articleId, {
         username: loggedInUser,
         body,
       });
+
       setComments((curr) => [newComment, ...curr]);
       setCommentBody("");
-      setTimeout(
-        () => commentsRef.current?.scrollIntoView({ behavior: "smooth" }),
-        50
-      );
-    } catch (e) {
-      setError(e.message || "Failed to post comment");
+
+      setTimeout(() => {
+        commentsRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 50);
+    } catch (e2) {
+      setError(e2.message || "Failed to post comment");
     } finally {
       setPosting(false);
     }
@@ -155,23 +149,25 @@ export default function ArticleModal({
 
     const prev = getReaction(commentId); // "like" | "dislike" | null
 
-    // считаем inc_votes
     let inc = 0;
     let next = null;
 
     if (prev === target) {
-      // снять реакцию
       next = null;
       inc = target === "like" ? -1 : +1;
     } else {
-      // поставить target
       next = target;
       if (prev === null) inc = target === "like" ? +1 : -1;
       else if (prev === "like" && target === "dislike") inc = -2;
       else if (prev === "dislike" && target === "like") inc = +2;
     }
 
-    setReactingCommentIds((s) => new Set(s).add(commentId));
+    // помечаем как "в процессе"
+    setReactingCommentIds((s) => {
+      const ns = new Set(s);
+      ns.add(commentId);
+      return ns;
+    });
 
     // optimistic votes
     setComments((curr) =>
@@ -214,21 +210,49 @@ export default function ArticleModal({
       setError(e.message || "Failed to update comment reaction");
     } finally {
       setReactingCommentIds((s) => {
-        const nextSet = new Set(s);
-        nextSet.delete(commentId);
-        return nextSet;
+        const ns = new Set(s);
+        ns.delete(commentId);
+        return ns;
+      });
+    }
+  };
+
+
+  const handleDeleteComment = async (commentId) => {
+    if (deletingCommentIds.has(commentId)) return;
+
+    const target = comments.find((c) => c.comment_id === commentId);
+    if (!target) return;
+
+    if (target.author !== loggedInUser) return; 
+
+    setError("");
+
+    // optimistic remove
+    setDeletingCommentIds((s) => {
+      const ns = new Set(s);
+      ns.add(commentId);
+      return ns;
+    });
+
+    setComments((curr) => curr.filter((c) => c.comment_id !== commentId));
+
+    try {
+        await deleteCommentById(commentId);
+    } catch (e) {
+      setComments((curr) => [target, ...curr]);
+      setError(e.message || "Failed to delete comment");
+    } finally {
+      setDeletingCommentIds((s) => {
+        const ns = new Set(s);
+        ns.delete(commentId);
+        return ns;
       });
     }
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="md"
-      scroll="paper"
-    >
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" scroll="paper">
       <DialogTitle
         sx={{
           display: "flex",
@@ -284,14 +308,7 @@ export default function ArticleModal({
                 Comments: <b>{article.comment_count}</b>
               </Typography>
 
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.5,
-                  ml: "auto",
-                }}
-              >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ml: "auto" }}>
                 <IconButton
                   size="small"
                   disabled={likeDisabled}
@@ -368,11 +385,15 @@ export default function ArticleModal({
                     key={c.comment_id}
                     comment={c}
                     likeState={getReaction(c.comment_id)} // "like" | "dislike" | null
-                    disabled={reactingCommentIds.has(c.comment_id)}
-                    onToggleLike={() => toggleCommentReaction(c.comment_id, "like")}
-                    onToggleDislike={() =>
-                      toggleCommentReaction(c.comment_id, "dislike")
+                    disabled={
+                      reactingCommentIds.has(c.comment_id) ||
+                      deletingCommentIds.has(c.comment_id)
                     }
+                    onToggleLike={() => toggleCommentReaction(c.comment_id, "like")}
+                    onToggleDislike={() => toggleCommentReaction(c.comment_id, "dislike")}
+                    loggedInUser={loggedInUser}
+                    deleting={deletingCommentIds.has(c.comment_id)}
+                    onDelete={() => handleDeleteComment(c.comment_id)}
                   />
                 ))}
               </Box>

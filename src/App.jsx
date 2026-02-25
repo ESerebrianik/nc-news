@@ -1,15 +1,13 @@
-import { useState } from 'react'
-import './App.css'
-const cors = require('cors');
-app.use(cors());
+import { useState } from "react";
+import "./App.css";
+import ArticleList from "./components/ArticleList";
+
 
 function App() {
-  
-
   return (
     <>
-    </>
-  )
+      <ArticleList />
+    </>);
 }
 
-export default App
+export default App;

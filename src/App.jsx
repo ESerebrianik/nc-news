@@ -1,13 +1,16 @@
-import { useState } from "react";
-import "./App.css";
+import Header from "./components/Header";
 import ArticleList from "./components/ArticleList";
 
+export default function App() {
+  const handleSearch = (query) => {
+    console.log("Search query:", query);
+    // позже подключим фильтрацию
+  };
 
-function App() {
   return (
     <>
+      <Header onSearch={handleSearch} />
       <ArticleList />
-    </>);
+    </>
+  );
 }
-
-export default App;

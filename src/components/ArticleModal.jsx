@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
@@ -11,15 +12,18 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+
 import CloseIcon from "@mui/icons-material/Close";
 import ThumbUpAltIcon from "@mui/icons-material/ThumbUpAlt";
 import ThumbUpAltOutlinedIcon from "@mui/icons-material/ThumbUpAltOutlined";
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+
+import CommentCard from "./CommentCard";
 
 import {
   fetchArticleById,
   fetchCommentsByArticleId,
   postComment,
+  patchCommentVotes,
 } from "../api";
 
 export default function ArticleModal({
@@ -27,6 +31,8 @@ export default function ArticleModal({
   articleId,
   onClose,
   loggedInUser = "butter_bridge",
+
+  // лайк статьи (как у тебя уже работает)
   votes,
   liked,
   onToggleLike,
@@ -34,39 +40,60 @@ export default function ArticleModal({
 }) {
   const [article, setArticle] = useState(null);
   const [comments, setComments] = useState([]);
+
   const [loadingArticle, setLoadingArticle] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
+
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
   const [commentBody, setCommentBody] = useState("");
 
   const commentsRef = useRef(null);
 
-  const dateLabel = useMemo(() => {
-    if (!article?.created_at) return "";
-    return new Date(article.created_at).toLocaleDateString("en-GB");
-  }, [article]);
+  // -----------------------------
+  // ✅ реакции на комментарии: like | dislike | null
+  // хранение: { [commentId]: "like" | "dislike" }
+  // -----------------------------
+  const [commentReactions, setCommentReactions] = useState(() => {
+    try {
+      const raw = localStorage.getItem("commentReactions");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [reactingCommentIds, setReactingCommentIds] = useState(() => new Set());
 
   useEffect(() => {
+    localStorage.setItem("commentReactions", JSON.stringify(commentReactions));
+  }, [commentReactions]);
+
+  const getReaction = (commentId) => commentReactions[commentId] ?? null;
+
+  // -----------------------------
+  // загрузка статьи + комментариев
+  // -----------------------------
+  useEffect(() => {
     if (!open || !articleId) return;
-  
+
     let ignore = false;
-  
+
     setError("");
     setArticle(null);
     setComments([]);
     setCommentBody("");
-  
+
     const load = async () => {
       try {
         setLoadingArticle(true);
         setLoadingComments(true);
-  
+
         const [a, c] = await Promise.all([
           fetchArticleById(articleId),
           fetchCommentsByArticleId(articleId),
         ]);
-  
+
         if (ignore) return;
         setArticle(a);
         setComments(c);
@@ -79,14 +106,26 @@ export default function ArticleModal({
         setLoadingComments(false);
       }
     };
-  
+
     load();
-  
+
     return () => {
       ignore = true;
     };
   }, [open, articleId]);
 
+  // дата
+  const dateLabel = useMemo(() => {
+    if (!article?.created_at) return "";
+    return new Date(article.created_at).toLocaleDateString("en-GB");
+  }, [article]);
+
+  // лайки статьи: показываем из пропсов (синхронно с листом)
+  const votesLabel = typeof votes === "number" ? votes : article?.votes;
+
+  // -----------------------------
+  // ✅ добавить комментарий
+  // -----------------------------
   const handleSubmitComment = async (e) => {
     e.preventDefault();
     const body = commentBody.trim();
@@ -111,7 +150,76 @@ export default function ArticleModal({
     }
   };
 
-  const votesLabel = typeof votes === "number" ? votes : article?.votes;
+  const toggleCommentReaction = async (commentId, target) => {
+    if (reactingCommentIds.has(commentId)) return;
+
+    const prev = getReaction(commentId); // "like" | "dislike" | null
+
+    // считаем inc_votes
+    let inc = 0;
+    let next = null;
+
+    if (prev === target) {
+      // снять реакцию
+      next = null;
+      inc = target === "like" ? -1 : +1;
+    } else {
+      // поставить target
+      next = target;
+      if (prev === null) inc = target === "like" ? +1 : -1;
+      else if (prev === "like" && target === "dislike") inc = -2;
+      else if (prev === "dislike" && target === "like") inc = +2;
+    }
+
+    setReactingCommentIds((s) => new Set(s).add(commentId));
+
+    // optimistic votes
+    setComments((curr) =>
+      curr.map((c) =>
+        c.comment_id === commentId ? { ...c, votes: (c.votes ?? 0) + inc } : c
+      )
+    );
+
+    // optimistic reaction
+    setCommentReactions((curr) => {
+      const copy = { ...curr };
+      if (next === null) delete copy[commentId];
+      else copy[commentId] = next;
+      return copy;
+    });
+
+    try {
+      const updated = await patchCommentVotes(commentId, inc);
+      setComments((curr) =>
+        curr.map((c) =>
+          c.comment_id === commentId ? { ...c, votes: updated.votes } : c
+        )
+      );
+    } catch (e) {
+      // rollback votes
+      setComments((curr) =>
+        curr.map((c) =>
+          c.comment_id === commentId ? { ...c, votes: (c.votes ?? 0) - inc } : c
+        )
+      );
+
+      // rollback reaction
+      setCommentReactions((curr) => {
+        const copy = { ...curr };
+        if (prev === null) delete copy[commentId];
+        else copy[commentId] = prev;
+        return copy;
+      });
+
+      setError(e.message || "Failed to update comment reaction");
+    } finally {
+      setReactingCommentIds((s) => {
+        const nextSet = new Set(s);
+        nextSet.delete(commentId);
+        return nextSet;
+      });
+    }
+  };
 
   return (
     <Dialog
@@ -139,7 +247,7 @@ export default function ArticleModal({
       </DialogTitle>
 
       <DialogContent dividers sx={{ maxHeight: "75vh" }}>
-        {loadingArticle && (
+        {(loadingArticle || loadingComments) && !article && (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
             <CircularProgress />
           </Box>
@@ -153,7 +261,7 @@ export default function ArticleModal({
 
         {article && (
           <>
-            {/* Meta + Like */}
+            {/* Meta + Like статьи */}
             <Box
               sx={{
                 display: "flex",
@@ -176,7 +284,6 @@ export default function ArticleModal({
                 Comments: <b>{article.comment_count}</b>
               </Typography>
 
-              {/* ✅ Like синхронный */}
               <Box
                 sx={{
                   display: "flex",
@@ -247,6 +354,7 @@ export default function ArticleModal({
               </Box>
             </Box>
 
+            {/* Comments list */}
             {loadingComments ? (
               <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
                 <CircularProgress size={22} />
@@ -256,32 +364,16 @@ export default function ArticleModal({
             ) : (
               <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 {comments.map((c) => (
-                  <Box
+                  <CommentCard
                     key={c.comment_id}
-                    sx={{
-                      border: "1px solid",
-                      borderColor: "divider",
-                      borderRadius: 2,
-                      p: 2,
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 2,
-                        mb: 1,
-                      }}
-                    >
-                      <Typography variant="subtitle2">{c.author}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {new Date(c.created_at).toLocaleDateString("en-GB")}
-                      </Typography>
-                    </Box>
-                    <Typography sx={{ whiteSpace: "pre-line" }}>
-                      {c.body}
-                    </Typography>
-                  </Box>
+                    comment={c}
+                    likeState={getReaction(c.comment_id)} // "like" | "dislike" | null
+                    disabled={reactingCommentIds.has(c.comment_id)}
+                    onToggleLike={() => toggleCommentReaction(c.comment_id, "like")}
+                    onToggleDislike={() =>
+                      toggleCommentReaction(c.comment_id, "dislike")
+                    }
+                  />
                 ))}
               </Box>
             )}

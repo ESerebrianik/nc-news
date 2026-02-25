@@ -70,3 +70,19 @@ export const fetchArticleById = async (articleId) => {
     const data = await response.json();
     return data.article; // { ... , votes: ... }
   };
+
+  export const patchCommentVotes = async (commentId, incVotes) => {
+    const response = await fetch(`${BASE_URL}/comments/${commentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ inc_votes: incVotes }),
+    });
+  
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.msg || "Failed to update comment votes");
+    }
+  
+    const data = await response.json();
+    return data.comment; // { comment_id, votes, ... }
+  };

@@ -6,13 +6,11 @@ import Menu from "./Menu";
 import SearchBar from "./SearchBar";
 import AddArticleModal from "./AddArticleModal";
 
-export default function Header({ onSearch }) {
+export default function Header({ onSearch, onSelectTopic, onGoHome, selectedTopic }) {
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
 
-  const handleSearch = () => {
-    onSearch?.(search);
-  };
+  const handleSearch = () => onSearch?.(search);
 
   const handleClear = () => {
     setSearch("");
@@ -29,12 +27,20 @@ export default function Header({ onSearch }) {
           py: 2,
           borderBottom: "1px solid",
           borderColor: "divider",
-          position: "relative", // важно
+          position: "sticky",
+          top: 0,
+          zIndex: 1100,
+          bgcolor: "background.paper",
         }}
       >
         {/* LEFT: burger + title */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Menu />
+          <Menu
+            selectedTopic={selectedTopic}
+            onGoHome={() => onGoHome?.()}
+            onSelectTopic={(slug) => onSelectTopic?.(slug)}
+            onAddArticle={() => setAddOpen(true)}
+          />
           <Typography variant="h5" sx={{ fontWeight: 800 }}>
             NC-News
           </Typography>

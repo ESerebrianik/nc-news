@@ -4,32 +4,47 @@ import { fetchArticles, patchArticleVotes } from "../api";
 import ArticleCard from "./ArticleCard";
 import ArticleModal from "./ArticleModal";
 
-export default function ArticleList() {
+export default function ArticleList({ search = "", topic = "" }) {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
   const [selectedArticleId, setSelectedArticleId] = useState(null);
-
-  // ✅ какие статьи лайкнуты (локально)
   const [likedIds, setLikedIds] = useState(() => new Set());
-
-  // ✅ какие статьи сейчас в процессе PATCH
   const [likingIds, setLikingIds] = useState(() => new Set());
 
   useEffect(() => {
     setLoading(true);
     setErr(null);
 
-    fetchArticles()
+    const params = new URLSearchParams();
+    if (topic) params.set("topic", topic);
+
+    const qs = params.toString();
+    const queries = qs ? `?${qs}` : "";
+
+    fetchArticles(queries)
       .then((data) => setArticles(data.articles))
       .catch((error) => setErr(error.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [topic]);
+
+  const filteredArticles = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return articles;
+
+    return articles.filter((a) => {
+      return (
+        a.title?.toLowerCase().includes(q) ||
+        a.author?.toLowerCase().includes(q) ||
+        a.topic?.toLowerCase().includes(q)
+      );
+    });
+  }, [articles, search]);
 
   const selectedArticleFromList = useMemo(
-    () => articles.find((a) => a.article_id === selectedArticleId) || null,
-    [articles, selectedArticleId]
+    () => filteredArticles.find((a) => a.article_id === selectedArticleId) || null,
+    [filteredArticles, selectedArticleId]
   );
 
   const isLiked = (id) => likedIds.has(id);
@@ -42,14 +57,12 @@ export default function ArticleList() {
 
     setLikingIds((prev) => new Set(prev).add(articleId));
 
-    // optimistic votes update
     setArticles((curr) =>
       curr.map((a) =>
         a.article_id === articleId ? { ...a, votes: (a.votes ?? 0) + inc } : a
       )
     );
 
-    // optimistic liked state update
     setLikedIds((prev) => {
       const next = new Set(prev);
       if (alreadyLiked) next.delete(articleId);
@@ -60,24 +73,23 @@ export default function ArticleList() {
     try {
       const updated = await patchArticleVotes(articleId, inc);
       setArticles((curr) =>
-        curr.map((a) => (a.article_id === articleId ? { ...a, votes: updated.votes } : a))
+        curr.map((a) =>
+          a.article_id === articleId ? { ...a, votes: updated.votes } : a
+        )
       );
     } catch (e) {
-      // rollback votes
+      // rollback
       setArticles((curr) =>
         curr.map((a) =>
           a.article_id === articleId ? { ...a, votes: (a.votes ?? 0) - inc } : a
         )
       );
-
-      // rollback liked state
       setLikedIds((prev) => {
         const next = new Set(prev);
         if (alreadyLiked) next.add(articleId);
         else next.delete(articleId);
         return next;
       });
-
       setErr(e.message || "Failed to update like");
     } finally {
       setLikingIds((prev) => {
@@ -97,20 +109,12 @@ export default function ArticleList() {
   }
 
   if (err) return <Alert severity="error">{err}</Alert>;
-  if (!articles.length) return <Typography>No articles found.</Typography>;
+  if (!filteredArticles.length) return <Typography>No articles found.</Typography>;
 
   return (
     <>
-      <Box
-        sx={{
-          maxWidth: 900,
-          mx: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: 2,
-        }}
-      >
-        {articles.map((article) => (
+      <Box sx={{ maxWidth: 900, mx: "auto", mt: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+        {filteredArticles.map((article) => (
           <ArticleCard
             key={article.article_id}
             article={article}

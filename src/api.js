@@ -101,6 +101,16 @@ export const fetchArticleById = async (articleId) => {
       throw new Error(msg);
     }
   
-    // 204 no content
     return true;
+  };
+
+  export const fetchTopics = async () => {
+    const response = await fetch(`${BASE_URL}/topics`);
+  
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.msg || "Failed to fetch topics");
+    }
+  
+    return response.json();
   };

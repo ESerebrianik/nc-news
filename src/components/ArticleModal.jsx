@@ -365,8 +365,18 @@ export default function ArticleModal({
                 minRows={2}
               />
               <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
-                <Button type="submit" variant="contained" disabled={posting}>
-                  {posting ? "Posting..." : "Post"}
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={posting}
+                sx={{
+                    textTransform: "none",
+                    borderRadius: 2,
+                    bgcolor: "black",
+                    "&:hover": { bgcolor: "#111" },
+                }}
+                >
+                {posting ? "Posting..." : "Post"}
                 </Button>
               </Box>
             </Box>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Collapse,
@@ -11,6 +12,8 @@ import {
   Popover,
   Typography,
 } from "@mui/material";
+
+
 
 import MenuIcon from "@mui/icons-material/Menu";
 import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
@@ -25,6 +28,7 @@ export default function Menu({ onGoHome, onSelectTopic, onAddArticle, selectedTo
   const [anchorEl, setAnchorEl] = useState(null);
   const [themesOpen, setThemesOpen] = useState(false);
   const [topics, setTopics] = useState([]);
+  const navigate = useNavigate();
 
   const open = Boolean(anchorEl);
 
@@ -62,27 +66,12 @@ export default function Menu({ onGoHome, onSelectTopic, onAddArticle, selectedTo
         }}
       >
         <Paper elevation={0} sx={{ p: 0.5 }}>
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              px: 1,
-              py: 1,
-              borderBottom: "1px solid",
-              borderColor: "divider",
-            }}
-          >
-            <MenuIcon fontSize="small" />
-            <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-              Menu
-            </Typography>
-          </Box>
-
+          
           <MenuList dense sx={{ py: 0.5 }}>
             <MenuItem
               onClick={() => {
                 onGoHome?.();
+                navigate("/");
                 handleClose();
               }}
             >
@@ -109,6 +98,7 @@ export default function Menu({ onGoHome, onSelectTopic, onAddArticle, selectedTo
                       key={t.slug}
                       onClick={() => {
                         onSelectTopic?.(t.slug);
+                        navigate(`/topics/${t.slug}`)
                         handleClose();
                       }}
                       sx={{
@@ -119,16 +109,7 @@ export default function Menu({ onGoHome, onSelectTopic, onAddArticle, selectedTo
                     >
                       <ListItemText
                         primary={t.slug}
-                        secondary={t.description}
-                        primaryTypographyProps={{ sx: { textTransform: "capitalize" } }}
-                        secondaryTypographyProps={{
-                          sx: {
-                            display: "block",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          },
-                        }}
+                        sx={{pl: 3}}
                       />
                     </MenuItem>
                   );

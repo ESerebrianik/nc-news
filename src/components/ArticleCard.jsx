@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router-dom";
+
 import {
   Box,
   Card,
@@ -24,9 +26,12 @@ export default function ArticleCard({
   liked,
   onToggleLike,
   likeDisabled,
+  onSelectTopic,
+  onSelectAuthor,
 }) {
   const { title, author, topic, created_at, comment_count, article_img_url } =
     article;
+  const navigate = useNavigate();
 
   const topicStyle = topicColors[topic] || topicColors.default;
   const dateLabel = new Date(created_at).toLocaleDateString("en-GB");
@@ -94,13 +99,27 @@ export default function ArticleCard({
           <Chip
             label={topic}
             size="small"
+            clickable
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectTopic?.(topic);
+            }}
             sx={{
               backgroundColor: topicStyle.bg,
               color: topicStyle.text,
               fontWeight: 600,
             }}
           />
-          <Chip label={author} size="small" variant="outlined" />
+          <Chip
+            label={author}
+            size="small"
+            variant="outlined"
+            clickable
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectAuthor?.(author);
+            }}
+          />
         </Box>
 
         <Typography
@@ -133,14 +152,16 @@ export default function ArticleCard({
         >
           <Typography variant="body2">
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.01 }}>
-            <IconButton size="small">
-              <ChatBubbleOutlineIcon sx={{
-                fontSize: 18,
-                position: "relative",
-                top: "2px", 
-            }} />
-            </IconButton>{" "}
-            {comment_count}
+              <IconButton size="small">
+                <ChatBubbleOutlineIcon
+                  sx={{
+                    fontSize: 18,
+                    position: "relative",
+                    top: "2px",
+                  }}
+                />
+              </IconButton>{" "}
+              {comment_count}
             </Box>
           </Typography>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.01 }}>

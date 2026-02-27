@@ -1,14 +1,23 @@
 const BASE_URL = "https://back-end-nc-news-ek5h.onrender.com/api";
 
-export const fetchArticles = async (queries = "") => {
-  const response = await fetch(`${BASE_URL}/articles${queries}`);
+export const fetchArticles = async (params = {}) => {
+  const qs = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, val]) => {
+    if (val === undefined || val === null) return;
+    if (typeof val === "string" && val.trim() === "") return;
+    qs.set(key, String(val));
+  });
+
+  const url = `${BASE_URL}/articles${qs.toString() ? `?${qs}` : ""}`;
+  const response = await fetch(url);
 
   if (!response.ok) {
     const errorData = await response.json();
     throw new Error(errorData.msg || "Failed to fetch articles");
   }
 
-  return response.json(); 
+  return response.json();
 };
 
 export const fetchArticleById = async (articleId) => {

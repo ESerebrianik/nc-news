@@ -1,50 +1,60 @@
 import { useEffect, useMemo, useState } from "react";
-import { Box, CircularProgress, Alert, Typography } from "@mui/material";
+import { Box, CircularProgress, Alert, Typography, Pagination } from "@mui/material";
 import { fetchArticles, patchArticleVotes } from "../api";
 import ArticleCard from "./ArticleCard";
 import ArticleModal from "./ArticleModal";
 
-export default function ArticleList({ search = "", topic = "" }) {
+export default function ArticleList({ search, topic = "", author ="", onSelectTopic, onSelectAuthor }) {
   const [articles, setArticles] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
   const [selectedArticleId, setSelectedArticleId] = useState(null);
+
   const [likedIds, setLikedIds] = useState(() => new Set());
   const [likingIds, setLikingIds] = useState(() => new Set());
+
+  const [page, setPage] = useState(1);
+  const limit = 10;
+
+  useEffect(() => {
+    setPage(1);
+  }, [topic, search, author]);
 
   useEffect(() => {
     setLoading(true);
     setErr(null);
 
-    const params = new URLSearchParams();
-    if (topic) params.set("topic", topic);
+    const params = {
+      topic,
+      author,
+      q: search,
+      limit,
+      p: page,
+      sort_by: "created_at",
+      order: "desc",
+    };
 
-    const qs = params.toString();
-    const queries = qs ? `?${qs}` : "";
-
-    fetchArticles(queries)
-      .then((data) => setArticles(data.articles))
+    fetchArticles(params)
+      .then((data) => {
+        setArticles(data.articles);
+        setTotalCount(data.total_count || 0);
+      })
       .catch((error) => setErr(error.message))
       .finally(() => setLoading(false));
-  }, [topic]);
+  }, [topic, search, author, page]);
 
-  const filteredArticles = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return articles;
+  const pageCount = Math.max(1, Math.ceil(totalCount / limit));
 
-    return articles.filter((a) => {
-      return (
-        a.title?.toLowerCase().includes(q) ||
-        a.author?.toLowerCase().includes(q) ||
-        a.topic?.toLowerCase().includes(q)
-      );
-    });
-  }, [articles, search]);
+  useEffect(() => {
+    if (page > pageCount) setPage(1);
+  }, [page, pageCount]);
 
   const selectedArticleFromList = useMemo(
-    () => filteredArticles.find((a) => a.article_id === selectedArticleId) || null,
-    [filteredArticles, selectedArticleId]
+    () => articles.find((a) => a.article_id === selectedArticleId) || null,
+    [articles, selectedArticleId]
   );
 
   const isLiked = (id) => likedIds.has(id);
@@ -84,12 +94,14 @@ export default function ArticleList({ search = "", topic = "" }) {
           a.article_id === articleId ? { ...a, votes: (a.votes ?? 0) - inc } : a
         )
       );
+
       setLikedIds((prev) => {
         const next = new Set(prev);
         if (alreadyLiked) next.add(articleId);
         else next.delete(articleId);
         return next;
       });
+
       setErr(e.message || "Failed to update like");
     } finally {
       setLikingIds((prev) => {
@@ -109,22 +121,52 @@ export default function ArticleList({ search = "", topic = "" }) {
   }
 
   if (err) return <Alert severity="error">{err}</Alert>;
-  if (!filteredArticles.length) return <Typography>No articles found.</Typography>;
 
   return (
     <>
-      <Box sx={{ maxWidth: 900, mx: "auto", mt: 3, display: "flex", flexDirection: "column", gap: 2 }}>
-        {filteredArticles.map((article) => (
-          <ArticleCard
-            key={article.article_id}
-            article={article}
-            votes={article.votes}
-            liked={isLiked(article.article_id)}
-            likeDisabled={likingIds.has(article.article_id)}
-            onToggleLike={() => handleToggleLike(article.article_id)}
-            onClick={() => setSelectedArticleId(article.article_id)}
-          />
-        ))}
+      <Box
+        sx={{
+          maxWidth: 900,
+          mx: "auto",
+          mt: 3,
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
+        <Typography sx={{ mb: 0.5 }} color="text.secondary">
+          Showing {articles.length} of {totalCount} results
+        </Typography>
+
+        {!articles.length ? (
+          <Typography sx={{ mt: 3, textAlign: "center" }}>
+            No articles found.
+          </Typography>
+        ) : (
+          <>
+            {articles.map((article) => (
+              <ArticleCard
+                key={article.article_id}
+                article={article}
+                votes={article.votes}
+                liked={isLiked(article.article_id)}
+                likeDisabled={likingIds.has(article.article_id)}
+                onToggleLike={() => handleToggleLike(article.article_id)}
+                onClick={() => setSelectedArticleId(article.article_id)}
+                onSelectTopic={onSelectTopic}
+                onSelectAuthor={onSelectAuthor}
+              />
+            ))}
+
+            <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+              <Pagination
+                count={pageCount}
+                page={page}
+                onChange={(_, value) => setPage(value)}
+              />
+            </Box>
+          </>
+        )}
       </Box>
 
       <ArticleModal
@@ -135,7 +177,9 @@ export default function ArticleList({ search = "", topic = "" }) {
         votes={selectedArticleFromList?.votes}
         liked={selectedArticleId ? isLiked(selectedArticleId) : false}
         likeDisabled={selectedArticleId ? likingIds.has(selectedArticleId) : false}
-        onToggleLike={() => selectedArticleId && handleToggleLike(selectedArticleId)}
+        onToggleLike={() =>
+          selectedArticleId && handleToggleLike(selectedArticleId)
+        }
       />
     </>
   );

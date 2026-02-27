@@ -10,6 +10,7 @@ import {
 
 import Header from "./components/Header";
 import ArticleList from "./components/ArticleList";
+import NotFoundPage from "./components/NotFoundPage";
 
 function TopicPage({ search, onSelectTopic, onSelectAuthor }) {
   const { slug } = useParams();
@@ -106,7 +107,7 @@ export default function App() {
           }
         />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </>
   );

@@ -53,7 +53,21 @@ export default function ArticleList({ search, topic = "", author ="", onSelectTo
         setArticles(data.articles);
         setTotalCount(data.total_count || 0);
       })
-      .catch((error) => setErr(error.message))
+      .catch((error) => {
+        const msg = String(error?.message || "");
+      
+        if (msg.toLowerCase().includes("topic not found")) {
+          setErr("This topic doesn’t exist.");
+          return;
+        }
+      
+        if (msg.toLowerCase().includes("user not found")) {
+          setErr("This user doesn’t exist.");
+          return;
+        }
+      
+        setErr("Something went wrong while loading articles.");
+      })
       .finally(() => setLoading(false));
   }, [topic, search, author, page, sortBy, order]);
 

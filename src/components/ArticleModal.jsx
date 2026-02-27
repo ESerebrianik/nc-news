@@ -45,6 +45,7 @@ export default function ArticleModal({
 
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState("");
+  const [notFound, setNotFound] = useState(false);
   const [commentBody, setCommentBody] = useState("");
 
   const commentsRef = useRef(null);
@@ -80,6 +81,7 @@ export default function ArticleModal({
     setArticle(null);
     setComments([]);
     setCommentBody("");
+    setNotFound(false);
 
     const load = async () => {
       try {
@@ -96,7 +98,13 @@ export default function ArticleModal({
         setComments(c);
       } catch (e) {
         if (ignore) return;
-        setError(e.message || "Failed to load article");
+        const msg = e?.message || "Failed to load article";
+        const looksLikeNotFound =
+          msg.toLowerCase().includes("not found") ||
+          msg.includes("404");
+      
+        setNotFound(looksLikeNotFound);
+        setError(looksLikeNotFound ? "" : msg);
       } finally {
         if (ignore) return;
         setLoadingArticle(false);
@@ -162,7 +170,6 @@ export default function ArticleModal({
       else if (prev === "dislike" && target === "like") inc = +2;
     }
 
-    // помечаем как "в процессе"
     setReactingCommentIds((s) => {
       const ns = new Set(s);
       ns.add(commentId);
@@ -277,15 +284,36 @@ export default function ArticleModal({
           </Box>
         )}
 
-        {error && (
+        {error && !notFound && (
           <Typography color="error" sx={{ mb: 2 }}>
-            {error}
+            Something went wrong. Please try again.
           </Typography>
         )}
+        {notFound && (
+          <Box sx={{ py: 6, textAlign: "center" }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Article not found
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              It may have been removed or the link is incorrect.
+            </Typography>
+            <Button
+              variant="contained"
+              onClick={onClose}
+              sx={{
+                textTransform: "none",
+                borderRadius: 2,
+                bgcolor: "black",
+                "&:hover": { bgcolor: "#111" },
+              }}
+            >
+              Close
+            </Button>
+          </Box>
+        )}
 
-        {article && (
+        {article && !notFound &&(
           <>
-            {/* Meta + Like статьи */}
             <Box
               sx={{
                 display: "flex",

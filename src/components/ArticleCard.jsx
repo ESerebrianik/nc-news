@@ -29,8 +29,15 @@ export default function ArticleCard({
   onSelectTopic,
   onSelectAuthor,
 }) {
-  const { title, author, topic, created_at, comment_count, article_img_url } =
-    article;
+  const {
+    title,
+    author,
+    topic,
+    created_at,
+    comment_count,
+    article_img_url,
+    body,
+  } = article;
   const navigate = useNavigate();
 
   const topicStyle = topicColors[topic] || topicColors.default;
@@ -127,16 +134,14 @@ export default function ArticleCard({
           color="text.secondary"
           sx={{
             lineHeight: 1.4,
-            minHeight: "2.8em",
             display: "-webkit-box",
             WebkitBoxOrient: "vertical",
             WebkitLineClamp: 2,
             overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
-          Preview text will appear here soon. Preview text will appear here
-          soon. Preview text will appear here soon. Preview text will appear
-          here soon.
+          {body}
         </Typography>
 
         <Box
@@ -150,20 +155,16 @@ export default function ArticleCard({
             gap: 0.5,
           }}
         >
-          <Typography variant="body2">
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.01 }}>
-              <IconButton size="small">
-                <ChatBubbleOutlineIcon
-                  sx={{
-                    fontSize: 18,
-                    position: "relative",
-                    top: "2px",
-                  }}
-                />
-              </IconButton>{" "}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.01 }}>
+            <IconButton size="small">
+              <ChatBubbleOutlineIcon
+                sx={{ fontSize: 18, position: "relative", top: "2px" }}
+              />
+            </IconButton>
+            <Typography variant="body2" component="span">
               {comment_count}
-            </Box>
-          </Typography>
+            </Typography>
+          </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.01 }}>
             <IconButton
               size="small"

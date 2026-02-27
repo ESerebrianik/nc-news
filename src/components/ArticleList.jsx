@@ -1,23 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
-import { Box, CircularProgress, Alert, Typography, Pagination } from "@mui/material";
+import { Box, CircularProgress, Alert, Typography, Pagination, Button, Menu, MenuItem } from "@mui/material";
 import { fetchArticles, patchArticleVotes } from "../api";
 import ArticleCard from "./ArticleCard";
 import ArticleModal from "./ArticleModal";
+import SwapVertIcon from "@mui/icons-material/SwapVert";
 
 export default function ArticleList({ search, topic = "", author ="", onSelectTopic, onSelectAuthor }) {
   const [articles, setArticles] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
-
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
-
   const [selectedArticleId, setSelectedArticleId] = useState(null);
-
   const [likedIds, setLikedIds] = useState(() => new Set());
   const [likingIds, setLikingIds] = useState(() => new Set());
-
   const [page, setPage] = useState(1);
   const limit = 10;
+  const [sortBy, setSortBy] = useState("created_at");
+  const [order, setOrder] = useState("desc");        
+  const [sortAnchorEl, setSortAnchorEl] = useState(null);
+  const sortOpen = Boolean(sortAnchorEl);
+  const openSortMenu = (e) => setSortAnchorEl(e.currentTarget);
+  const closeSortMenu = () => setSortAnchorEl(null);
+  const applySort = (nextSortBy, nextOrder) => {
+    setSortBy(nextSortBy);
+    setOrder(nextOrder);
+    setPage(1);
+    closeSortMenu();
+  };
 
   useEffect(() => {
     setPage(1);
@@ -33,10 +42,12 @@ export default function ArticleList({ search, topic = "", author ="", onSelectTo
       q: search,
       limit,
       p: page,
-      sort_by: "created_at",
-      order: "desc",
+      sort_by: sortBy,
+      order,
     };
 
+    console.log("FETCH /articles params:", { topic, q: search, limit, p: page, sort_by: sortBy, order });
+    
     fetchArticles(params)
       .then((data) => {
         setArticles(data.articles);
@@ -44,7 +55,7 @@ export default function ArticleList({ search, topic = "", author ="", onSelectTo
       })
       .catch((error) => setErr(error.message))
       .finally(() => setLoading(false));
-  }, [topic, search, author, page]);
+  }, [topic, search, author, page, sortBy, order]);
 
   const pageCount = Math.max(1, Math.ceil(totalCount / limit));
 
@@ -128,15 +139,68 @@ export default function ArticleList({ search, topic = "", author ="", onSelectTo
         sx={{
           maxWidth: 900,
           mx: "auto",
-          mt: 3,
+          mt: 2,
           display: "flex",
           flexDirection: "column",
           gap: 2,
         }}
       >
-        <Typography sx={{ mb: 0.5 }} color="text.secondary">
-          Showing {articles.length} of {totalCount} results
-        </Typography>
+
+        <Box
+          sx={{
+            width: 900,
+            mx: "auto",
+            mt: 1,
+            pl: 0.5,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            
+          }}
+        >
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: 14 }}>
+            Showing {articles.length} of {totalCount} results
+          </Typography>
+
+          <Button
+            onClick={openSortMenu}
+            variant="text"
+            endIcon={<SwapVertIcon />}
+            color="text.secondary"
+            sx={{ textTransform: "none", "& .MuiButton-endIcon": {marginLeft: "4px",}}}
+          >
+            Sort by
+          </Button>
+
+          <Menu 
+            anchorEl={sortAnchorEl} 
+            open={sortOpen} 
+            onClose={closeSortMenu} 
+            MenuListProps={{
+              sx: { "& .MuiMenuItem-root": { fontSize: 14 } },
+            }}>
+            <MenuItem onClick={() => applySort("created_at", "desc")}>
+              Date (newest)
+            </MenuItem>
+            <MenuItem onClick={() => applySort("created_at", "asc")}>
+              Date (oldest)
+            </MenuItem>
+
+            <MenuItem onClick={() => applySort("comment_count", "desc")}>
+              Comments (high → low)
+            </MenuItem>
+            <MenuItem onClick={() => applySort("comment_count", "asc")}>
+              Comments (low → high)
+            </MenuItem>
+
+            <MenuItem onClick={() => applySort("votes", "desc")}>
+              Votes (high → low)
+            </MenuItem>
+            <MenuItem onClick={() => applySort("votes", "asc")}>
+              Votes (low → high)
+            </MenuItem>
+          </Menu>
+        </Box>
 
         {!articles.length ? (
           <Typography sx={{ mt: 3, textAlign: "center" }}>

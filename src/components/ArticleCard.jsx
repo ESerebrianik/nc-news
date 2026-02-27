@@ -54,29 +54,37 @@ export default function ArticleCard({
       sx={{
         cursor: "pointer",
         display: "flex",
-        height: 200,
-        borderRadius: 3,
+        flexDirection: { xs: "column", sm: "row" }, 
+        borderRadius: "28px",
         overflow: "hidden",
-        "&:hover": { boxShadow: 4 },
+        boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+        transition: "all 0.25s ease",
+        "&:hover": {
+          boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
+          transform: "translateY(-2px)",
+        },
       }}
     >
       <Box
         component="img"
         src={article_img_url}
         alt={title}
-        sx={{ width: 200, objectFit: "cover", flexShrink: 0 }}
+        sx={{ 
+          width: { xs: "100%", sm: 200 },
+          objectFit: "cover", 
+          flexShrink: 0 }}
       />
 
       <CardContent
         sx={{
           flex: 1,
-          position: "relative",
           display: "flex",
           flexDirection: "column",
           gap: 1,
           minWidth: 0,
-          p: 2.5,
-          pb: 6,
+          p: 3,
+          pb: "12px !important",
+          minHeight: { sm: 160},
         }}
       >
         <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
@@ -136,7 +144,7 @@ export default function ArticleCard({
             lineHeight: 1.4,
             display: "-webkit-box",
             WebkitBoxOrient: "vertical",
-            WebkitLineClamp: 2,
+            WebkitLineClamp: { xs: 3, sm: 2 },
             overflow: "hidden",
             textOverflow: "ellipsis",
           }}
@@ -146,13 +154,11 @@ export default function ArticleCard({
 
         <Box
           sx={{
-            position: "absolute",
-            right: 20,
-            bottom: 8,
+            mt: "auto",
             display: "flex",
             justifyContent: "flex-end",
             alignItems: "center",
-            gap: 0.5,
+            gap: 0.75,
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.01 }}>

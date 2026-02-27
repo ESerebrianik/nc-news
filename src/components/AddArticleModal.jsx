@@ -13,7 +13,7 @@ export default function AddArticleModal({ open, onClose }) {
 
       <DialogContent dividers>
         <Typography color="text.secondary">
-          Здесь скоро будет форма добавления статьи (POST /api/articles).
+          Soon, a form for adding a new article will appear here.
         </Typography>
       </DialogContent>
     </Dialog>

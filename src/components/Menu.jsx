@@ -47,7 +47,7 @@ export default function Menu({ onGoHome, onSelectTopic, onAddArticle, selectedTo
   return (
     <>
       <IconButton onClick={handleOpen} aria-label="Open menu">
-        <MenuIcon />
+        <MenuIcon sx={{ fontSize: 42, color: "black", p: "0px !important",}} />
       </IconButton>
 
       <Popover

@@ -151,27 +151,29 @@ export default function ArticleList({ search, topic = "", author ="", onSelectTo
     <>
       <Box
         sx={{
+          width: {xs: "90%", sm:"100%"},
           maxWidth: 900,
           mx: "auto",
           mt: 2,
+          px: { xs: 1, sm: 3 },
           display: "flex",
           flexDirection: "column",
           gap: 2,
+          
         }}
       >
 
-        <Box
-          sx={{
-            width: 900,
-            mx: "auto",
-            mt: 1,
-            pl: 0.5,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            
-          }}
-        >
+          <Box
+            sx={{
+              width: {xs: "100%", sm:"100%"},
+              mt: 1,
+              px: { xs: 0, sm: 0 },
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 1,
+            }}
+          >
           <Typography variant="body2" color="text.secondary" sx={{ fontSize: 14 }}>
             Showing {articles.length} of {totalCount} results
           </Typography>

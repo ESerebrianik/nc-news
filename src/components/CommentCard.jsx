@@ -7,12 +7,11 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 
 export default function CommentCard({
   comment,
-  likeState, // "like" | "dislike" | null
+  likeState, 
   onToggleLike,
   onToggleDislike,
   disabled,
 
-  // ✅ для удаления
   loggedInUser = "butter_bridge",
   onDelete,
   deleting = false,

@@ -44,7 +44,6 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // показываем выбранную тему в Header (если мы на /topics/:slug)
   const selectedTopic = location.pathname.startsWith("/topics/")
     ? location.pathname.split("/")[2] || ""
     : "";
